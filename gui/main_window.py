@@ -3,7 +3,7 @@ from tkinter import messagebox
 from models.note import Note
 from services.note_manager import NoteManager
 from storage.storage_manager import StorageManager
-from qui.note_dialog import NoteDialog  # Обратите внимание: qui, не gui
+from gui.note_dialog import NoteDialog  # Обратите внимание: qui, не gui
 
 
 class MainWindow:
