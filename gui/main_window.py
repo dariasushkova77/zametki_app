@@ -3,24 +3,66 @@ from tkinter import messagebox
 from models.note import Note
 from services.note_manager import NoteManager
 from storage.storage_manager import StorageManager
-from gui.note_dialog import NoteDialog
+from qui.note_dialog import NoteDialog  # Обратите внимание: qui, не gui
 
 
 class MainWindow:
+    """Главное окно приложения"""
+
     def __init__(self):
+        # Инициализация менеджеров
         self.manager = NoteManager()
         self.storage = StorageManager()
 
+        # Загружаем сохраненные заметки
         self.load_notes()
 
+        # Создаем главное окно
         self.root = tk.Tk()
         self.root.title("Мои заметки")
         self.root.geometry("600x450")
 
+        # Создаем интерфейс
         self.create_menu()
         self.create_widgets()
 
+    def load_notes(self):
+        """Загружает заметки из файла"""
+        try:
+            notes_data = self.storage.load()
+            print(f"Загружено записей: {len(notes_data)}")  # Отладка
+
+            for item in notes_data:
+                # Проверяем тип данных
+                if isinstance(item, dict):
+                    # Если это словарь из JSON
+                    title = item.get('title', 'Без названия')
+                    content = item.get('content', '')
+                    note = Note(title, content)
+                elif isinstance(item, Note):
+                    # Если это уже объект Note
+                    note = item
+                else:
+                    print(f"Неизвестный тип: {type(item)}")
+                    continue
+
+                self.manager.add_note(note)
+
+            print(f"Загружено заметок: {len(self.manager.get_notes())}")  # Отладка
+
+        except Exception as e:
+            print(f"Ошибка загрузки: {e}")
+
+    def save_notes(self):
+        """Сохраняет заметки в файл"""
+        try:
+            self.storage.save(self.manager.get_notes())
+            print("Заметки сохранены")  # Отладка
+        except Exception as e:
+            print(f"Ошибка сохранения: {e}")
+
     def create_menu(self):
+        """Создает меню"""
         menubar = tk.Menu(self.root)
         self.root.config(menu=menubar)
 
@@ -36,16 +78,9 @@ class MainWindow:
 
         self.root.bind('<Control-n>', lambda e: self.add_note())
 
-    def load_notes(self):
-        notes_data = self.storage.load()
-        for note_data in notes_data:
-            note = Note(note_data['title'], note_data['content'])
-            self.manager.add_note(note)
-
-    def save_notes(self):
-        self.storage.save(self.manager.get_notes())
-
     def create_widgets(self):
+        """Создает элементы интерфейса"""
+
         # Панель инструментов
         toolbar = tk.Frame(self.root, bg="#f0f0f0", relief=tk.RAISED, bd=1)
         toolbar.pack(fill=tk.X)
@@ -94,11 +129,13 @@ class MainWindow:
         self.update_list()
 
     def update_list(self):
+        """Обновляет список заметок"""
         self.listbox.delete(0, tk.END)
         for note in self.manager.get_notes():
             self.listbox.insert(tk.END, note.title)
 
     def update_content(self):
+        """Обновляет область просмотра содержимого"""
         selection = self.listbox.curselection()
         self.text_content.config(state=tk.NORMAL)
         self.text_content.delete(1.0, tk.END)
@@ -114,18 +151,25 @@ class MainWindow:
         self.text_content.config(state=tk.DISABLED)
 
     def on_select(self, event):
+        """Обработчик выбора заметки"""
         self.update_content()
 
     def add_note(self):
-        dialog = NoteDialog(self.root)
-        if dialog.result:
-            title, content = dialog.result
-            note = Note(title, content)
-            self.manager.add_note(note)
-            self.update_list()
-            self.save_notes()
+        """Добавляет новую заметку"""
+        try:
+            dialog = NoteDialog(self.root)
+            if dialog.result:
+                title, content = dialog.result
+                note = Note(title, content)
+                self.manager.add_note(note)
+                self.update_list()
+                self.save_notes()
+                print(f"Заметка '{title}' добавлена")  # Отладка
+        except Exception as e:
+            messagebox.showerror("Ошибка", f"Не удалось добавить заметку:\n{e}")
 
     def edit_note(self):
+        """Редактирует выбранную заметку"""
         selection = self.listbox.curselection()
         if not selection:
             messagebox.showinfo("Информация", "Выберите заметку для редактирования")
@@ -143,6 +187,7 @@ class MainWindow:
             self.update_content()
 
     def delete_note(self):
+        """Удаляет выбранную заметку"""
         selection = self.listbox.curselection()
         if not selection:
             messagebox.showinfo("Информация", "Выберите заметку для удаления")
@@ -156,15 +201,18 @@ class MainWindow:
             self.update_content()
 
     def show_about(self):
+        """Показывает информацию о программе"""
         messagebox.showinfo("О программе",
                             "Мои заметки v1.0\n\n"
                             "Простое приложение для ведения заметок\n"
                             "Создано с использованием Python и Tkinter")
 
     def run(self):
+        """Запускает приложение"""
         self.root.protocol("WM_DELETE_WINDOW", self.on_closing)
         self.root.mainloop()
 
     def on_closing(self):
+        """При закрытии окна сохраняем заметки"""
         self.save_notes()
         self.root.destroy()

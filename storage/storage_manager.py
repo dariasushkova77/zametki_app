@@ -1,4 +1,3 @@
-# storage/storage_manager.py
 import json
 import os
 
@@ -14,7 +13,19 @@ class StorageManager:
     def save(self, notes):
         """Сохраняет список заметок в файл"""
         try:
-            data = [note.to_dict() for note in notes]
+            # Преобразуем объекты Note в словари
+            data = []
+            for note in notes:
+                if hasattr(note, 'to_dict'):  # Если есть метод to_dict
+                    data.append(note.to_dict())
+                elif isinstance(note, dict):  # Если уже словарь
+                    data.append(note)
+                else:  # Если объект Note
+                    data.append({
+                        "title": note.title,
+                        "content": note.content
+                    })
+
             with open(self.filename, 'w', encoding='utf-8') as f:
                 json.dump(data, f, ensure_ascii=False, indent=2)
             return True
@@ -31,13 +42,10 @@ class StorageManager:
             with open(self.filename, 'r', encoding='utf-8') as f:
                 data = json.load(f)
 
-            # Преобразуем словари обратно в объекты Note
-            from models.note import Note
-            notes = []
-            for item in data:
-                note = Note(item['title'], item['content'])
-                notes.append(note)
-            return notes
+            # Возвращаем список словарей
+            # НЕ создаем объекты Note здесь
+            return data
+
         except Exception as e:
             print(f"Ошибка загрузки: {e}")
             return []
